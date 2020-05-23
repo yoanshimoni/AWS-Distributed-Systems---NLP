@@ -16,12 +16,13 @@ import org.apache.log4j.BasicConfigurator;
 public class Main {
 
     private final static String
-            JAR = "s3://maorrockyjars/step_1.jar\n",
+            JAR = "s3://maorrockyjars/step_1.jar",
             OUTPUT = "s3://maorrockyjars/output/\n",
             LOGS = "s3://maorrockyjars/logs/\n",
             REGION = "us-east-1",
             KEY_NAME = "maor_dsp202",
             DATA_SET_1GRAM = "s3://datasets.elasticmapreduce/ngrams/books/20090715/eng-us-all/2gram/data\n",
+            DATA_1GRAM_a_ONLY = "s3://maorrockyjars/z_short.txt",
             TERMINATE = "TERMINATE_JOB_FLOW";
 
 
@@ -43,7 +44,7 @@ public class Main {
         HadoopJarStepConfig stepOneConfig = new HadoopJarStepConfig()
                 .withJar(JAR)
                 .withMainClass("StepOne")
-                .withArgs(DATA_SET_1GRAM, OUTPUT);
+                .withArgs(DATA_1GRAM_a_ONLY, OUTPUT);
         StepConfig stepOne = new StepConfig()
                 .withName("StepOne")
                 .withHadoopJarStep(stepOneConfig)
@@ -51,9 +52,9 @@ public class Main {
 
         System.out.println("create step one");
         JobFlowInstancesConfig instances = new JobFlowInstancesConfig()
-                .withInstanceCount(1)
-                .withMasterInstanceType(InstanceType.M1Small.toString())
-                .withSlaveInstanceType(InstanceType.M1Small.toString())
+                .withInstanceCount(3)
+                .withMasterInstanceType(InstanceType.M4Large.toString())
+                .withSlaveInstanceType(InstanceType.M4Large.toString())
                 .withHadoopVersion("2.7.3")
                 .withEc2KeyName(KEY_NAME)
                 .withKeepJobFlowAliveWhenNoSteps(false)
