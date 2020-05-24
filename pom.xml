@@ -11,7 +11,7 @@
     <modules>
         <module>step_1</module>
         <module>step_2</module>
-        <module>step_3</module>
+        <module>step_3V2</module>
     </modules>
     <!--    <dependencyManagement>-->
     <!--        <dependencies>-->
