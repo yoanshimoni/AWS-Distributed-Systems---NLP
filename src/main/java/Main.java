@@ -42,7 +42,7 @@ public class Main {
         HadoopJarStepConfig stepOneConfig = new HadoopJarStepConfig()
                 .withJar(JAR_step1)
                 .withMainClass("StepOne")
-                .withArgs(DATA_1GRAM_Z_ONLY, OUTPUT+ "outputStepOne/");
+                .withArgs(DATA_1GRAM_Z_ONLY,DATA_2GRAM_ZY_ONLY, OUTPUT+ "outputStepOne/");
         StepConfig stepOne = new StepConfig()
                 .withName("StepOne")
                 .withHadoopJarStep(stepOneConfig)
@@ -50,7 +50,7 @@ public class Main {
 
         System.out.println("created step one");
 
-        HadoopJarStepConfig stepTwoConfig = new HadoopJarStepConfig()
+      /*  HadoopJarStepConfig stepTwoConfig = new HadoopJarStepConfig()
                 .withJar(JAR_step2)
                 .withMainClass("StepTwo")
                 .withArgs(DATA_2GRAM_ZY_ONLY, OUTPUT + "outputStepTwo/");
@@ -58,7 +58,7 @@ public class Main {
         StepConfig stepTwo = new StepConfig()
                 .withName("StepTwo")
                 .withHadoopJarStep(stepTwoConfig)
-                .withActionOnFailure(TERMINATE);
+                .withActionOnFailure(TERMINATE);*/
 
         System.out.println("created step two");
 
@@ -76,7 +76,7 @@ public class Main {
         RunJobFlowRequest runFlowRequest = new RunJobFlowRequest()
                 .withName("Assignment2")
                 .withInstances(instances)
-                .withSteps(stepOne,stepTwo)
+                .withSteps(stepOne)
                 .withLogUri(LOGS)
                 .withServiceRole("EMR_DefaultRole")
                 .withJobFlowRole("EMR_EC2_DefaultRole")

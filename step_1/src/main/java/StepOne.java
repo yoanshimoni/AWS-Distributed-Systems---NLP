@@ -1,5 +1,6 @@
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -63,51 +64,61 @@ public class StepOne {
             "without", "would", "yet", "you", "your", "yours", "yourself", "yourselves"};
     public static final Set<String> stopSet = new HashSet<>(Arrays.asList(stopWords));
 
-    private static class MyMapper extends Mapper<LongWritable, Text, Text, Text> {
+    private static class MyMapper extends Mapper<LongWritable, Text, BigramKey, IntWritable> {
 
         public void map(LongWritable key, Text val, Context context) throws IOException, InterruptedException {
             String[] line = val.toString().split("\t");
-            String ngram = line[0]; //the word
-            if (!stopSet.contains(ngram)) {
-                String decade = line[1].substring(0, line[1].length() - 1);
-                decade = new StringBuilder().append(decade).append("0").toString(); //  the decade. for example 1990
-                String ngram_and_decade = ngram + "-" + decade; //for example apple-1990
-                int occurs = Integer.parseInt(line[2]);
-
-                Text ngram_and_decade_Key = new Text(), occurs_Value = new Text(), decade_counter_Key = new Text();
-                occurs_Value.set(String.format("%d", occurs));
-                decade_counter_Key.set(String.format("*^&decade_couneter %s", decade));
-                ngram_and_decade_Key.set(String.format("%s", ngram_and_decade));
-                context.write(ngram_and_decade_Key, occurs_Value); // this is how we will count apperance of each word per deceade
-                // expamle apple-1990, 20
-                context.write(decade_counter_Key, occurs_Value);
-            } // this is how we will cound number of words per decade
+            String[] words = line[0].split(" ");
+            String decade_str = line[1].substring(0, line[1].length() - 1);
+            decade_str = new StringBuilder().append(decade_str).append("0").toString(); //  the decade. for example 1990
+            IntWritable decade = new IntWritable(Integer.parseInt(decade_str));
+            IntWritable occurrences = new IntWritable(Integer.parseInt(line[2]));
+            for (String word : words) {
+                if (stopSet.contains(word.toLowerCase())) {
+                    return;
+                }
+            }
+            if (words.length == 1) {
+                context.write(new BigramKey(new Text(words[0]), new Text("*"), decade), occurrences);
+                context.write(new BigramKey(decade), occurrences);
+            } else if (words.length == 2) {
+                context.write(new BigramKey(new Text(words[0]), new Text(words[1]), decade), occurrences);
+            }
+            // this is how we will cound number of words per decade
             // example *^&decade_couneter 1990 , 20
         }
     }
 
-    private static class MyReducer extends Reducer<Text, Text, Text, Text> {
-        public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-            System.out.println("key is\t" + key);
-            String w1 = key.toString();
-            Text newKey = new Text(), newValue = new Text();
-            long totalOccurs = 0L;
-            for (Text value : values) {
-                totalOccurs += Long.parseLong(value.toString());
-                System.out.println("value is \t" + value);
+
+
+    private static class MyReducer extends Reducer<BigramKey, IntWritable, Text, Text> {
+        private int firstWordOccurrences = 0;
+
+
+        public void reduce(BigramKey key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable value : values) {
+                sum += value.get();
             }
 
-            newKey.set(String.format("%s", w1));
-            newValue.set(String.format("%d", totalOccurs));
-            System.out.printf("final result is\n%s : %d\n\n", w1, totalOccurs);
-            context.write(newKey, newValue);
-            // expamle apple-1990, 20
-            // expamle apple-1990, 30
-            // --> apple-1990 , 50
 
-            // example *^&decade_couneter 1990 , 20
-            // example *^&decade_couneter 1990 , 230
-            // --> 1990, 250
+            // 1-gram or decade: // <decade w1, c(w1)> or <decade, total(decade)>
+            if (key.getWord2().toString().equals("*")) {
+                context.write(new Text(key.toString()), new Text("" + sum));
+                String word1 = key.getWord1().toString();
+
+                if (!word1.equals("*")) { // 1-gram
+                    firstWordOccurrences = sum;
+                }
+
+            }
+            // 2-gram: <decade w1 w2, c(<w1,w2>) c(w1)>
+            else {
+                context.write(
+                        new Text(key.toString()),
+                        new Text(String.valueOf(sum) + " " + String.valueOf(firstWordOccurrences)));
+            }
+
         }
     }
 
@@ -118,6 +129,21 @@ public class StepOne {
         }
     }
 
+    public class CombinerClass extends Reducer <BigramKey,IntWritable,BigramKey,IntWritable> {
+
+        @Override
+        public void reduce (BigramKey key ,Iterable<IntWritable> values, Context context)
+                throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable value : values) {
+                sum += value.get();
+            }
+            context.write(key, new IntWritable(sum));
+        }
+    }
+
+
+
     public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException {
         System.out.println("starting EMR");
 
@@ -125,19 +151,26 @@ public class StepOne {
         Job job = Job.getInstance(configuration);
         job.setJarByClass(StepOne.class);
         job.setMapperClass(MyMapper.class);
-        job.setCombinerClass(MyReducer.class);
+        job.setMapOutputKeyClass(BigramKey.class);
+        job.setMapOutputValueClass(IntWritable.class);
         job.setReducerClass(MyReducer.class);
-        job.setNumReduceTasks(1);
+//        job.setCombinerClass(CombinerClass.class);
+//        job.setNumReduceTasks(1);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
         job.setPartitionerClass(StepOne.MyPartitioner.class);
         job.setOutputFormatClass(TextOutputFormat.class);
         //TODO change the input format
-        job.setInputFormatClass(SequenceFileInputFormat.class);
-        SequenceFileInputFormat.addInputPath(job, new Path(args[0]));
+//        job.setInputFormatClass(SequenceFileInputFormat.class);
         job.setInputFormatClass(TextInputFormat.class);
+        /*
+        SequenceFileInputFormat.addInputPath(job, new Path(args[0]));
+        SequenceFileInputFormat.addInputPath(job, new Path(args[1]));*/
+        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/googlebooks-eng-all-1gram-20120701-z"));
+        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/zy_short.txt"));
 //        FileInputFormat.setInputPaths(job, new Path(args[0]));
-        String output = args[1];
+//        String output = args[1];
+        String output = "output";
         FileOutputFormat.setOutputPath(job, new Path(output));
         job.waitForCompletion(true);
     }

@@ -56,11 +56,17 @@ public class StepTwo {
 
     private static class MyMapper extends Mapper<LongWritable, Text, Text, Text> {
         public void map(LongWritable key, Text val, Context context) throws IOException, InterruptedException {
+            //example bad apple 1992 10
+            //example bad apple 1993 3
+            // --> bad apple 1990 13
+            String[] line = val.toString().split("\t");
+//            String[] ngram = lines[0].split(" ");
+            String ngram = line[0];
+            String decade = line[1].substring(0, line[1].length() - 1);
+            decade = decade + "0"; //  the decade. for example 1990
+            int occurs = Integer.parseInt(line[2]);
 
-            String[] lines = val.toString().split("\t"),
-                    words = lines[0].split(" ");
-
-            if (words.length > 1) {
+            /*if (words.length > 1) {
 
                 String w1 = words[0], w2 = words[1];
                 Text text = new Text(), text1 = new Text();
@@ -71,7 +77,7 @@ public class StepTwo {
 
                 context.write(text, text1);
 
-            }
+            }*/
         }
     }
 
