@@ -50,7 +50,7 @@ public class Main {
 
         System.out.println("created step one");
 
-      /*  HadoopJarStepConfig stepTwoConfig = new HadoopJarStepConfig()
+        HadoopJarStepConfig stepTwoConfig = new HadoopJarStepConfig()
                 .withJar(JAR_step2)
                 .withMainClass("StepTwo")
                 .withArgs(DATA_2GRAM_ZY_ONLY, OUTPUT + "outputStepTwo/");
@@ -58,7 +58,7 @@ public class Main {
         StepConfig stepTwo = new StepConfig()
                 .withName("StepTwo")
                 .withHadoopJarStep(stepTwoConfig)
-                .withActionOnFailure(TERMINATE);*/
+                .withActionOnFailure(TERMINATE);
 
         System.out.println("created step two");
 

@@ -118,7 +118,7 @@ public class StepOne {
                         new Text(key.toString()),
                         new Text(String.valueOf(sum) + " " + String.valueOf(firstWordOccurrences)));
             }
-
+            // value can only be c(w1) or total(decade) or c(<w1,w2>) c(w1)
         }
     }
 
@@ -159,7 +159,6 @@ public class StepOne {
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
         job.setPartitionerClass(StepOne.MyPartitioner.class);
-        job.setOutputFormatClass(TextOutputFormat.class);
         //TODO change the input format
 //        job.setInputFormatClass(SequenceFileInputFormat.class);
         job.setInputFormatClass(TextInputFormat.class);
@@ -167,10 +166,11 @@ public class StepOne {
         SequenceFileInputFormat.addInputPath(job, new Path(args[0]));
         SequenceFileInputFormat.addInputPath(job, new Path(args[1]));*/
         SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/googlebooks-eng-all-1gram-20120701-z"));
-        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/zy_short.txt"));
+        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/googlebooks-eng-all-2gram-20120701-zy"));
 //        FileInputFormat.setInputPaths(job, new Path(args[0]));
 //        String output = args[1];
         String output = "output";
+        job.setOutputFormatClass(TextOutputFormat.class);
         FileOutputFormat.setOutputPath(job, new Path(output));
         job.waitForCompletion(true);
     }

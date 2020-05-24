@@ -1,11 +1,15 @@
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.DoubleWritable;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
@@ -17,92 +21,92 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class StepTwo {
-    public static String[] stopWords = {"a",
-            "about", "above", "across", "after", "afterwards", "again", "against", "all", "almost",
-            "alone", "along", "already", "also", "although", "always", "am", "among", "amongst",
-            "amoungst", "amount", "an", "and", "another", "any", "anyhow", "anyone", "anything",
-            "anyway", "anywhere", "are", "around", "as", "at", "back", "be", "became", "because",
-            "become", "becomes", "becoming", "been", "before", "beforehand", "behind", "being",
-            "below", "beside", "besides", "between", "beyond", "bill", "both", "bottom", "but",
-            "by", "call", "can", "cannot", "cant", "co", "computer", "con", "could", "couldn't",
-            "cry", "de", "describe", "detail", "do", "done", "down", "due", "during", "each",
-            "eg", "eight", "either", "eleven", "else", "elsewhere", "empty", "enough", "etc",
-            "even", "ever", "every", "everyone", "everything", "everywhere", "except", "few",
-            "fifteen", "fify", "fill", "find", "fire", "first", "five", "for", "former",
-            "formerly", "forty", "found", "four", "from", "front", "full", "further", "get",
-            "give", "go", "had", "has", "hasn't", "have", "he", "hence", "her", "here", "hereafter",
-            "hereby", "herein", "hereupon", "hers", "herself", "him", "himself", "his", "how", "however",
-            "hundred", "i", "ie", "if", "in", "inc", "indeed", "interest", "into", "is", "it", "its",
-            "itself", "keep", "last", "latter", "latterly", "least", "less", "ltd", "made", "many", "may",
-            "me", "meanwhile", "might", "mill", "mine", "more", "moreover", "most", "mostly", "move",
-            "much", "must", "my", "myself", "name", "namely", "neither", "never", "nevertheless",
-            "next", "nine", "no", "nobody", "none", "noone", "nor", "not", "nothing", "now",
-            "nowhere", "of", "off", "often", "on", "once", "one", "only", "onto", "or", "other",
-            "others", "otherwise", "our", "ours", "ourselves", "out", "over", "own", "part",
-            "per", "perhaps", "please", "put", "rather", "re", "same", "see", "seem", "seemed",
-            "seeming", "seems", "serious", "several", "she", "should", "show", "side", "since",
-            "sincere", "six", "sixty", "so", "some", "somehow", "someone", "something", "sometime",
-            "sometimes", "somewhere", "still", "such", "system", "take", "ten", "than", "that",
-            "the", "their", "them", "themselves", "then", "thence", "there", "thereafter",
-            "thereby", "therefore", "therein", "thereupon", "these", "they", "thick", "thin",
-            "third", "this", "those", "though", "three", "through", "throughout", "thru",
-            "thus", "to", "together", "too", "top", "toward", "towards", "twelve", "twenty",
-            "two", "un", "under", "until", "up", "upon", "us", "very", "via", "was", "we", "well",
-            "were", "what", "whatever", "when", "whence", "whenever", "where", "whereafter",
-            "whereas", "whereby", "wherein", "whereupon", "wherever", "whether", "which", "while",
-            "whither", "who", "whoever", "whole", "whom", "whose", "why", "will", "with", "within",
-            "without", "would", "yet", "you", "your", "yours", "yourself", "yourselves"};
-    public static final Set<String> stopSet = new HashSet<>(Arrays.asList(stopWords));
 
-    private static class MyMapper extends Mapper<LongWritable, Text, Text, Text> {
-        public void map(LongWritable key, Text val, Context context) throws IOException, InterruptedException {
-            //example bad apple 1992 10
-            //example bad apple 1993 3
-            // --> bad apple 1990 13
-            String[] line = val.toString().split("\t");
-//            String[] ngram = lines[0].split(" ");
-            String ngram = line[0];
-            String decade = line[1].substring(0, line[1].length() - 1);
-            decade = decade + "0"; //  the decade. for example 1990
-            int occurs = Integer.parseInt(line[2]);
 
-            /*if (words.length > 1) {
+    private static class MyMapper extends Mapper<Text, Text, BigramKey, NGramValue> {
+        public void map(Text key, Text value, Context context) throws IOException, InterruptedException {
+            // key: <decade w1 w2>
+            // value: occurrences
+            // 1-gram or decade: // <decade w1, c(w1)> or <decade, total(decade)>
+            // 2-gram: <decade w1 w2, c(<w1,w2>) c(w1)>
+            String[] valueWords = value.toString().split(" ");
+            String[] keyWords = key.toString().split(" "); //[0:decade 1:w1 2:w2]
 
-                String w1 = words[0], w2 = words[1];
-                Text text = new Text(), text1 = new Text();
-                int occurs = Integer.parseInt(lines[2]);
-
-                text.set(String.format("%s %s", w1, w2));
-                text1.set(String.format("%d", occurs));
-
-                context.write(text, text1);
-
-            }*/
+            IntWritable decade = new IntWritable(Integer.parseInt(keyWords[0]));
+            BigramKey key1;
+            NGramValue newVal;
+            if (keyWords[2].equals("*")) { // total for decade OR occurrences for 1-gram
+                newVal = new NGramValue(new IntWritable(Integer.parseInt(valueWords[0])));
+                key1 = new BigramKey(new Text(keyWords[1]), new Text(keyWords[2]), new Text(keyWords[1]), decade);
+                // newVal = (occurs)
+                // bigramKey = (w1,w2,w1);
+            } else { // occurrences for 2-gram
+                newVal = new NGramValue(
+                        new IntWritable(Integer.parseInt(valueWords[0])),
+                        new IntWritable(Integer.parseInt(valueWords[1])));
+                key1 = new BigramKey(new Text(keyWords[1]), new Text(keyWords[2]), new Text(keyWords[2]), decade);
+                // newVal (c(<w1,w2>) c(w1))
+                // bigramKey = (w1,w2,w2);
+            }
+            context.write(key1, newVal);
+            System.out.printf("wrote <%s : %s>\n", key1.toString(), newVal.toString());
         }
     }
 
-    private static class MyReducer extends Reducer<Text, Text, Text, Text> {
-        public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-            String w1 = key.toString();
-            Text newKey = new Text(), newValue = new Text();
-            long totalOccurs = 0L;
+    private static class MyReducer extends Reducer<BigramKey, NGramValue, Text, DoubleWritable> {
 
-            for (Text value : values) {
-                totalOccurs += Long.parseLong(value.toString());
+        private int decadeTotal = 0;
+        private int occurrencesW2 = 0;
+
+        @Override
+        public void reduce(BigramKey key, Iterable<NGramValue> values, Context context)
+                throws IOException, InterruptedException {
+
+            int sum = 0;
+            int occurrencesW1 = 0;
+            String w1 = key.getWord1().toString();
+            String w2 = key.getWord2().toString();
+
+            for (NGramValue value : values) {
+                sum += value.getOccurrences().get();
+                if (!w1.equals("*") && !w2.equals("*")) //2gram
+                    occurrencesW1 += value.getOccurrencesOfW1().get();
+                System.out.printf("%s\n",key.toString());
+                System.out.printf("value %s\n", value.toString());
             }
 
-            newKey.set(String.format("%s", w1));
-            newValue.set(String.format("%d", totalOccurs));
+            if (w1.equals("*")) // decade
+                decadeTotal = sum;
+            else if (w2.equals("*")) // 1-gram
+                occurrencesW2 = sum;
+            else { // 2-gram
+                // write the likelihood to the context: <decade likelihood w1 w2>, likelihood>
+                DoubleWritable calculation = calculateLikelihood(
+                        sum, occurrencesW1, occurrencesW2, decadeTotal);
+                context.write(new Text(key.getDecade() + " " + calculation + " " + w1 + " " + w2), calculation);
+                System.out.printf("%s\n and calc is %s\n",
+                        key.getDecade() + " " + calculation + " " + w1 + " " + w2,
+                        calculation.toString() );
+            }
+        }
 
-            context.write(newKey, newValue);
+        private DoubleWritable calculateLikelihood(double c12, double c1, double c2, double N) {
+            double L1 = c12 * Math.log10(c2 / N) + (c1 - c12) * Math.log10(1 - (c2 / N));
+            double L2 = (c2 - c12) * Math.log10(c2 / N) + (N + c12 - c1 - c2) * Math.log10(1 - (c2 / N));
+            double L3 = c12 * Math.log10(c12 / c1) + (c1 - c12) * Math.log10(1 - (c12 / c1));
+            double L4 = (c2 - c12) * Math.log10((c2 - c12) / (N - c1)) +
+                    (N + c12 - c1 - c2) * Math.log10(1 - ((c2 - c12) / (N - c1)));
 
+            double formula = L1 + L2 - L3 - L4;
+            return new DoubleWritable((-2) * formula);
         }
     }
 
-    private static class MyPartitioner extends Partitioner<Text, Text> {
+    private static class MyPartitioner extends Partitioner<BigramKey, NGramValue> {
+        // ensure that keys with same decade are directed to the same reducer
         @Override
-        public int getPartition(Text key, Text value, int numPartitions) {
-            return Math.abs(key.hashCode()) % numPartitions;
+        public int getPartition(BigramKey key, NGramValue value, int numPartitions) {
+            return Math.abs(key.getDecade().toString().hashCode()) % numPartitions;
         }
     }
 
@@ -110,20 +114,29 @@ public class StepTwo {
         Configuration configuration = new Configuration();
         Job job = Job.getInstance(configuration);
         job.setJarByClass(StepTwo.class);
-        job.setMapperClass(StepTwo.MyMapper.class);
-        job.setCombinerClass(StepTwo.MyReducer.class);
-        job.setReducerClass(StepTwo.MyReducer.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
-        job.setPartitionerClass(StepTwo.MyPartitioner.class);
-        job.setOutputFormatClass(TextOutputFormat.class);
-        //TODO change the input format
-        job.setInputFormatClass(SequenceFileInputFormat.class);
-        SequenceFileInputFormat.addInputPath(job, new Path(args[0]));
-        job.setInputFormatClass(TextInputFormat.class);
+        job.setMapperClass(MyMapper.class);
+        job.setMapOutputKeyClass(BigramKey.class);
+        job.setMapOutputValueClass(NGramValue.class);
+        job.setReducerClass(MyReducer.class);
+        job.setPartitionerClass(MyPartitioner.class);
+//        job.setOutputKeyClass(Text.class);
+
+
+//        job.setOutputValueClass(Text.class);
+
+
+//        job.setInputFormatClass(SequenceFileInputFormat.class);
+        job.setInputFormatClass(KeyValueTextInputFormat.class);
+        FileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/output/part-r-00000"));
+
+//        SequenceFileInputFormat.addInputPath(job, new Path(""));
+//        job.setInputFormatClass(TextInputFormat.class);
 //        FileInputFormat.setInputPaths(job, new Path(args[0]));
-        String output = args[1];
+
+//        String output = args[1];
+        String output = "output_step2";
+        job.setOutputFormatClass(TextOutputFormat.class);
         FileOutputFormat.setOutputPath(job, new Path(output));
-        job.waitForCompletion(true);
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 }
