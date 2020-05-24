@@ -10,6 +10,7 @@
     <version>1.0-SNAPSHOT</version>
     <modules>
         <module>step_1</module>
+        <module>step_2</module>
     </modules>
     <!--    <dependencyManagement>-->
     <!--        <dependencies>-->

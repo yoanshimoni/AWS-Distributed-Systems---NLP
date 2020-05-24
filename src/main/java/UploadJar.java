@@ -5,6 +5,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.sun.org.apache.xml.internal.res.XMLErrorResources_tr;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,7 +17,7 @@ public class UploadJar {
         String stringObjKeyName = "step_1.jar";
         String fileObjKeyName = "step_1.jar";
         String fileName = "/home/maor/Desktop/DSP202/ass2_202/out/artifacts/step_1_jar/step_1.jar";
-
+        System.out.println("Started uploading " + fileObjKeyName);
         try {
             //This code expects that you have AWS credentials set up per:
             // https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/setup-credentials.html
@@ -37,6 +38,7 @@ public class UploadJar {
             e.printStackTrace();
         }// Amazon S3 couldn't be contacted for a response, or the client
 // couldn't parse the response from Amazon S3.
+        System.out.println("finished uploading");
 
     }
 
