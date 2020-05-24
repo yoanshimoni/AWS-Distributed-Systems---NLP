@@ -1,28 +1,26 @@
 
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.regions.Regions;
 import com.amazonaws.services.ec2.model.InstanceType;
 import com.amazonaws.services.elasticmapreduce.AmazonElasticMapReduce;
 import com.amazonaws.services.elasticmapreduce.AmazonElasticMapReduceClientBuilder;
 import com.amazonaws.services.elasticmapreduce.model.*;
-import com.sun.glass.ui.CommonDialogs;
 import org.apache.log4j.BasicConfigurator;
 
 
 public class Main {
 
     private final static String
-            JAR = "s3://maorrockyjars/step_1.jar",
-            OUTPUT = "s3://maorrockyjars/output/\n",
-            LOGS = "s3://maorrockyjars/logs/\n",
+            JAR_step1 = "s3://maorrockyjars/step_1.jar",
+            JAR_step2 = "s3://maorrockyjars/step_2.jar",
+            OUTPUT = "s3://maorrockyjars/output/",
+            LOGS = "s3://maorrockyjars/logs/",
             REGION = "us-east-1",
             KEY_NAME = "maor_dsp202",
             DATA_SET_1GRAM = "s3://datasets.elasticmapreduce/ngrams/books/20090715/eng-us-all/2gram/data\n",
-            DATA_1GRAM_a_ONLY = "s3://maorrockyjars/z_short.txt",
+            DATA_1GRAM_Z_ONLY = "s3://maorrockyjars/z_short.txt",
+            DATA_2GRAM_ZY_ONLY = "s3://maorrockyjars/zy_short.txt",
             TERMINATE = "TERMINATE_JOB_FLOW";
 
 
@@ -42,15 +40,28 @@ public class Main {
         System.out.println("created EMR");
 
         HadoopJarStepConfig stepOneConfig = new HadoopJarStepConfig()
-                .withJar(JAR)
+                .withJar(JAR_step1)
                 .withMainClass("StepOne")
-                .withArgs(DATA_1GRAM_a_ONLY, OUTPUT);
+                .withArgs(DATA_1GRAM_Z_ONLY, OUTPUT+ "outputStepOne/");
         StepConfig stepOne = new StepConfig()
                 .withName("StepOne")
                 .withHadoopJarStep(stepOneConfig)
                 .withActionOnFailure(TERMINATE);
 
-        System.out.println("create step one");
+        System.out.println("created step one");
+
+        HadoopJarStepConfig stepTwoConfig = new HadoopJarStepConfig()
+                .withJar(JAR_step2)
+                .withMainClass("StepTwo")
+                .withArgs(DATA_2GRAM_ZY_ONLY, OUTPUT + "outputStepTwo/");
+
+        StepConfig stepTwo = new StepConfig()
+                .withName("StepTwo")
+                .withHadoopJarStep(stepTwoConfig)
+                .withActionOnFailure(TERMINATE);
+
+        System.out.println("created step two");
+
         JobFlowInstancesConfig instances = new JobFlowInstancesConfig()
                 .withInstanceCount(3)
                 .withMasterInstanceType(InstanceType.M4Large.toString())
@@ -65,7 +76,7 @@ public class Main {
         RunJobFlowRequest runFlowRequest = new RunJobFlowRequest()
                 .withName("Assignment2")
                 .withInstances(instances)
-                .withSteps(stepOne)
+                .withSteps(stepOne,stepTwo)
                 .withLogUri(LOGS)
                 .withServiceRole("EMR_DefaultRole")
                 .withJobFlowRole("EMR_EC2_DefaultRole")
