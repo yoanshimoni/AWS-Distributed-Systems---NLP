@@ -64,7 +64,7 @@ public class StepOne {
             "without", "would", "yet", "you", "your", "yours", "yourself", "yourselves"};
     public static final Set<String> stopSet = new HashSet<>(Arrays.asList(stopWords));
 
-    private static class MyMapper extends Mapper<LongWritable, Text, BigramKey, IntWritable> {
+    private static class MyMapper extends Mapper<LongWritable, Text, DoubleGramKey, IntWritable> {
 
         public void map(LongWritable key, Text val, Context context) throws IOException, InterruptedException {
             String[] line = val.toString().split("\t");
@@ -79,10 +79,10 @@ public class StepOne {
                 }
             }
             if (words.length == 1) {
-                context.write(new BigramKey(new Text(words[0]), new Text("*"), decade), occurrences);
-                context.write(new BigramKey(decade), occurrences);
+                context.write(new DoubleGramKey(new Text(words[0]), new Text("*"), decade), occurrences);
+                context.write(new DoubleGramKey(decade), occurrences);
             } else if (words.length == 2) {
-                context.write(new BigramKey(new Text(words[0]), new Text(words[1]), decade), occurrences);
+                context.write(new DoubleGramKey(new Text(words[0]), new Text(words[1]), decade), occurrences);
             }
             // this is how we will cound number of words per decade
             // example *^&decade_couneter 1990 , 20
@@ -91,11 +91,11 @@ public class StepOne {
 
 
 
-    private static class MyReducer extends Reducer<BigramKey, IntWritable, Text, Text> {
-        private int firstWordOccurrences = 0;
+    private static class MyReducer extends Reducer<DoubleGramKey, IntWritable, Text, Text> {
+        private int w1_Occurrences = 0;
 
 
-        public void reduce(BigramKey key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+        public void reduce(DoubleGramKey key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
             int sum = 0;
             for (IntWritable value : values) {
                 sum += value.get();
@@ -105,10 +105,9 @@ public class StepOne {
             // 1-gram or decade: // <decade w1, c(w1)> or <decade, total(decade)>
             if (key.getWord2().toString().equals("*")) {
                 context.write(new Text(key.toString()), new Text("" + sum));
-                String word1 = key.getWord1().toString();
 
-                if (!word1.equals("*")) { // 1-gram
-                    firstWordOccurrences = sum;
+                if (!key.getWord1().toString().equals("*")) { // 1-gram
+                    w1_Occurrences = sum;
                 }
 
             }
@@ -116,7 +115,7 @@ public class StepOne {
             else {
                 context.write(
                         new Text(key.toString()),
-                        new Text(String.valueOf(sum) + " " + String.valueOf(firstWordOccurrences)));
+                        new Text(String.valueOf(sum) + " " + String.valueOf(w1_Occurrences)));
             }
             // value can only be c(w1) or total(decade) or c(<w1,w2>) c(w1)
         }
@@ -129,10 +128,10 @@ public class StepOne {
         }
     }
 
-    public class CombinerClass extends Reducer <BigramKey,IntWritable,BigramKey,IntWritable> {
+    public class CombinerClass extends Reducer <DoubleGramKey,IntWritable, DoubleGramKey,IntWritable> {
 
         @Override
-        public void reduce (BigramKey key ,Iterable<IntWritable> values, Context context)
+        public void reduce (DoubleGramKey key , Iterable<IntWritable> values, Context context)
                 throws IOException, InterruptedException {
             int sum = 0;
             for (IntWritable value : values) {
@@ -151,7 +150,7 @@ public class StepOne {
         Job job = Job.getInstance(configuration);
         job.setJarByClass(StepOne.class);
         job.setMapperClass(MyMapper.class);
-        job.setMapOutputKeyClass(BigramKey.class);
+        job.setMapOutputKeyClass(DoubleGramKey.class);
         job.setMapOutputValueClass(IntWritable.class);
         job.setReducerClass(MyReducer.class);
 //        job.setCombinerClass(CombinerClass.class);

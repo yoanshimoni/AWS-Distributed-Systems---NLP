@@ -7,23 +7,23 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 
-public class BigramKey implements WritableComparable<BigramKey> {
+public class DoubleGramKey implements WritableComparable<DoubleGramKey>{
 	
 	private Text word1;
 	private Text word2;
-	private IntWritable decade;
+	private IntWritable	decade;
 
-	public BigramKey(Text word1, Text word2, IntWritable decade) {
+	public DoubleGramKey(Text word1, Text word2, IntWritable decade) {
 		this.word1 = word1;
 		this.word2 = word2;
         this.decade = decade;
 	}
 
-	public BigramKey(IntWritable decade) {
+	public DoubleGramKey(IntWritable decade) {
 		this(new Text("*"),new Text("*"),decade);
 	}
 
-	public BigramKey() {
+	public DoubleGramKey() {
         this(new Text("*"),new Text("*"), new IntWritable(-1));
 	}
 
@@ -39,7 +39,7 @@ public class BigramKey implements WritableComparable<BigramKey> {
 		decade.write(out);
 	}
 
-	public int compareTo(BigramKey other) {
+	public int compareTo(DoubleGramKey other) {
 		// if this.decade == other.decade, put <decade * *> first
 		// if this.w1 == other.w1, put <w1, *> before <w1,w2>
 		int ret = this.decade.get() - other.decade.get();

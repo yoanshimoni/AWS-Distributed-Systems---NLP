@@ -2,7 +2,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -10,20 +9,15 @@ import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
-import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 public class StepTwo {
 
 
-    private static class MyMapper extends Mapper<Text, Text, BigramKey, NGramValue> {
+    private static class MyMapper extends Mapper<Text, Text, ThreeGramKey, NGramValue> {
         public void map(Text key, Text value, Context context) throws IOException, InterruptedException {
             // key: <decade w1 w2>
             // value: occurrences
@@ -33,18 +27,18 @@ public class StepTwo {
             String[] keyWords = key.toString().split(" "); //[0:decade 1:w1 2:w2]
 
             IntWritable decade = new IntWritable(Integer.parseInt(keyWords[0]));
-            BigramKey key1;
+            ThreeGramKey key1;
             NGramValue newVal;
             if (keyWords[2].equals("*")) { // total for decade OR occurrences for 1-gram
                 newVal = new NGramValue(new IntWritable(Integer.parseInt(valueWords[0])));
-                key1 = new BigramKey(new Text(keyWords[1]), new Text(keyWords[2]), new Text(keyWords[1]), decade);
+                key1 = new ThreeGramKey(new Text(keyWords[1]), new Text(keyWords[2]), new Text(keyWords[1]), decade);
                 // newVal = (occurs)
                 // bigramKey = (w1,w2,w1);
             } else { // occurrences for 2-gram
                 newVal = new NGramValue(
                         new IntWritable(Integer.parseInt(valueWords[0])),
                         new IntWritable(Integer.parseInt(valueWords[1])));
-                key1 = new BigramKey(new Text(keyWords[1]), new Text(keyWords[2]), new Text(keyWords[2]), decade);
+                key1 = new ThreeGramKey(new Text(keyWords[1]), new Text(keyWords[2]), new Text(keyWords[2]), decade);
                 // newVal (c(<w1,w2>) c(w1))
                 // bigramKey = (w1,w2,w2);
             }
@@ -53,13 +47,13 @@ public class StepTwo {
         }
     }
 
-    private static class MyReducer extends Reducer<BigramKey, NGramValue, Text, DoubleWritable> {
+    private static class MyReducer extends Reducer<ThreeGramKey, NGramValue, Text, DoubleWritable> {
 
         private int decadeTotal = 0;
         private int occurrencesW2 = 0;
 
         @Override
-        public void reduce(BigramKey key, Iterable<NGramValue> values, Context context)
+        public void reduce(ThreeGramKey key, Iterable<NGramValue> values, Context context)
                 throws IOException, InterruptedException {
 
             int sum = 0;
@@ -83,7 +77,12 @@ public class StepTwo {
                 // write the likelihood to the context: <decade likelihood w1 w2>, likelihood>
                 DoubleWritable calculation = calculateLikelihood(
                         sum, occurrencesW1, occurrencesW2, decadeTotal);
-                context.write(new Text(key.getDecade() + " " + calculation + " " + w1 + " " + w2), calculation);
+
+                context.write(new Text(String.format("%s %s %s %s",
+                        key.getDecade().toString(),
+                        calculation.toString(),
+                        w1,
+                        w2)), calculation);
                 System.out.printf("%s\n and calc is %s\n",
                         key.getDecade() + " " + calculation + " " + w1 + " " + w2,
                         calculation.toString() );
@@ -102,10 +101,10 @@ public class StepTwo {
         }
     }
 
-    private static class MyPartitioner extends Partitioner<BigramKey, NGramValue> {
+    private static class MyPartitioner extends Partitioner<ThreeGramKey, NGramValue> {
         // ensure that keys with same decade are directed to the same reducer
         @Override
-        public int getPartition(BigramKey key, NGramValue value, int numPartitions) {
+        public int getPartition(ThreeGramKey key, NGramValue value, int numPartitions) {
             return Math.abs(key.getDecade().toString().hashCode()) % numPartitions;
         }
     }
@@ -115,7 +114,7 @@ public class StepTwo {
         Job job = Job.getInstance(configuration);
         job.setJarByClass(StepTwo.class);
         job.setMapperClass(MyMapper.class);
-        job.setMapOutputKeyClass(BigramKey.class);
+        job.setMapOutputKeyClass(ThreeGramKey.class);
         job.setMapOutputValueClass(NGramValue.class);
         job.setReducerClass(MyReducer.class);
         job.setPartitionerClass(MyPartitioner.class);

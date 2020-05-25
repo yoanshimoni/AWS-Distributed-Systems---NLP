@@ -6,21 +6,21 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-public class BigramKey implements WritableComparable<BigramKey> {
+public class ThreeGramKey implements WritableComparable<ThreeGramKey> {
 
 	private Text word1;
     private Text word2;
     private Text foreignKey;
     private IntWritable decade;
 
-    public BigramKey(Text word1, Text word2, Text foreignKey, IntWritable decade) {
+    public ThreeGramKey(Text word1, Text word2, Text foreignKey, IntWritable decade) {
         this.word1 = word1;
         this.word2 = word2;
         this.foreignKey = foreignKey;
         this.decade = decade;
     }
 
-    public BigramKey() {
+    public ThreeGramKey() {
         this (new Text("*"),new Text("*"), new Text("-1"), new IntWritable(-1));
     }
 
@@ -38,7 +38,7 @@ public class BigramKey implements WritableComparable<BigramKey> {
         decade.write(out);
 	}
 
-	public int compareTo(BigramKey other) {
+	public int compareTo(ThreeGramKey other) {
 		int ret = this.decade.get() - other.decade.get();
 		if (ret == 0)
             if (this.foreignKey.toString().equals("*") && !other.foreignKey.toString().equals("*"))
@@ -80,13 +80,4 @@ public class BigramKey implements WritableComparable<BigramKey> {
 		return this.decade;
 	}
 
-    @Override
-    public String toString() {
-        return "BigramKey{" +
-                "word1=" + word1 +
-                ", word2=" + word2 +
-                ", foreignKey=" + foreignKey +
-                ", decade=" + decade +
-                '}';
-    }
 }
