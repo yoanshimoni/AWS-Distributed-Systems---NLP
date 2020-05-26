@@ -1,22 +1,23 @@
-import com.amazonaws.AmazonServiceException;
 import com.amazonaws.SdkClientException;
-import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.sun.org.apache.xml.internal.res.XMLErrorResources_tr;
 
 import java.io.File;
 import java.io.IOException;
 
 public class UploadJar {
     public static void main(String[] args) throws IOException {
+        uploadJar("step_3.jar", "/home/maor/Desktop/DSP202/ass2_202/out/artifacts/step_3V2_jar/step_3V2.jar");
+
+    }
+
+    public static void uploadJar(String name, String pathTo) {
         String REGION = "us-east-1";
         String bucketName = "maorrockyjars";
-        String stringObjKeyName = "step_1.jar";
-        String fileObjKeyName = "step_1.jar";
-        String fileName = "/home/maor/Desktop/DSP202/ass2_202/out/artifacts/step_1_jar/step_1.jar";
+        String stringObjKeyName = name;
+        String fileObjKeyName = name;
+        String fileName = pathTo;
         System.out.println("Started uploading " + fileObjKeyName);
         try {
             //This code expects that you have AWS credentials set up per:
@@ -39,7 +40,6 @@ public class UploadJar {
         }// Amazon S3 couldn't be contacted for a response, or the client
 // couldn't parse the response from Amazon S3.
         System.out.println("finished uploading");
-
     }
 
 

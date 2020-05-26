@@ -7,6 +7,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -62,9 +63,48 @@ public class StepOne {
             "whereas", "whereby", "wherein", "whereupon", "wherever", "whether", "which", "while",
             "whither", "who", "whoever", "whole", "whom", "whose", "why", "will", "with", "within",
             "without", "would", "yet", "you", "your", "yours", "yourself", "yourselves"};
-    public static final Set<String> stopSet = new HashSet<>(Arrays.asList(stopWords));
+
+    public static String[] arr = {"", "״", "׳", "של", "רב", "פי", "עם", "עליו", "עליהם", "על", "עד", "מן",
+            "מכל", "מי", "מהם", "מה", "מ", "למה", "לכל", "לי", "לו", "להיות", "לה",
+            "לא", "כן", "כמה", "כלי", "כל", "כי", "יש", "ימים", "יותר", "יד", "י", "זה", "ז", "ועל", "ומי",
+            "ולא", "וכן", "וכל", "והיא",
+            "והוא", "ואם", "ו", "הרבה", "הנה", "היו", "היה", "היא", "הזה",
+            "הוא", "דבר", "ד", "ג", "בני", "בכל", "בו", "בה", "בא", "את", "אשר", "אם", "אלה",
+            "אל", "אך", "איש", "אין", "אחת", "אחר", "אחד", "אז", "אותו", "־", "^", "?", ";", ":", "1", ".", "-", "*",
+            "!", "שלשה", "בעל", "פני", ")", "גדול", "שם", "עלי", "עולם", "מקום", "לעולם",
+            "לנו", "להם", "ישראל", "יודע", "זאת", "השמים", "הזאת", "הדברים", "הדבר",
+            "הבית", "האמת", "דברי", "במקום", "בהם", "אמרו", "אינם", "אחרי", "אותם", "אדם", "(", "חלק",
+            "שני", "שכל", "שאר", "ש", "ר", "פעמים", "נעשה", "ן", "ממנו", "מלא", "מזה", "ם", "לפי", "ל",
+            "כמו", "כבר", "כ", "זו", "ומה", "ולכל", "ובין", "ואין", "הן",
+            "היתה", "הא", "ה", "בל", "בין", "בזה", "ב", "אף", "אי", "אותה", "או", "אבל", "א"
+    };
+    public static final HashSet<String> hebrew_set = new HashSet<>(Arrays.asList(arr));
+    public static final Set<String> english_set = new HashSet<>(Arrays.asList(stopWords));
+
 
     private static class MyMapper extends Mapper<LongWritable, Text, DoubleGramKey, IntWritable> {
+
+        private static final char FIRST_LOWER_ENG_CHAR = 'a';
+        private static final char LAST_LOWER_ENG_CHAR = 'z';
+        private static final char FIRST_UPPER_ENG_CHAR = 'A';
+        private static final char LAST_UPPER_ENG_CHAR = 'Z';
+
+        private static boolean isLetterOrSpace(char c) {
+
+            return ((c >= FIRST_LOWER_ENG_CHAR && c <= LAST_LOWER_ENG_CHAR) ||
+                    (c >= FIRST_UPPER_ENG_CHAR && c <= LAST_UPPER_ENG_CHAR) ||
+                    c == ' ');
+
+        }
+
+        private static boolean onlyLettersAndSpace(String string) {
+            for (int i = 0; i < string.length(); i++) {
+                if (!isLetterOrSpace(string.charAt(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
         public void map(LongWritable key, Text val, Context context) throws IOException, InterruptedException {
             String[] line = val.toString().split("\t");
@@ -74,13 +114,17 @@ public class StepOne {
             IntWritable decade = new IntWritable(Integer.parseInt(decade_str));
             IntWritable occurrences = new IntWritable(Integer.parseInt(line[2]));
             for (String word : words) {
-                if (stopSet.contains(word.toLowerCase())) {
+                if (english_set.contains(word.toLowerCase()) || hebrew_set.contains(word)) {
+                    return;
+                }
+                // filter only ngrams that contain non-alphabetic characters
+                if (!onlyLettersAndSpace(word)) {
                     return;
                 }
             }
             if (words.length == 1) {
                 context.write(new DoubleGramKey(new Text(words[0]), new Text("*"), decade), occurrences);
-                context.write(new DoubleGramKey(decade), occurrences);
+                context.write(new DoubleGramKey(decade), occurrences); //<* * decade, occurs>
             } else if (words.length == 2) {
                 context.write(new DoubleGramKey(new Text(words[0]), new Text(words[1]), decade), occurrences);
             }
@@ -88,7 +132,6 @@ public class StepOne {
             // example *^&decade_couneter 1990 , 20
         }
     }
-
 
 
     private static class MyReducer extends Reducer<DoubleGramKey, IntWritable, Text, Text> {
@@ -121,17 +164,18 @@ public class StepOne {
         }
     }
 
-    private static class MyPartitioner extends Partitioner<Text, Text> {
+    private static class MyPartitioner extends Partitioner<DoubleGramKey, IntWritable> {
+        // ensure that keys with same word1 are directed to the same reducer
         @Override
-        public int getPartition(Text key, Text value, int numPartitions) {
-            return Math.abs(key.hashCode()) % numPartitions;
+        public int getPartition(DoubleGramKey key, IntWritable value, int numPartitions) {
+            return Math.abs(key.getWord1().toString().hashCode()) % numPartitions;
         }
     }
 
-    public class CombinerClass extends Reducer <DoubleGramKey,IntWritable, DoubleGramKey,IntWritable> {
+    public class CombinerClass extends Reducer<DoubleGramKey, IntWritable, DoubleGramKey, IntWritable> {
 
         @Override
-        public void reduce (DoubleGramKey key , Iterable<IntWritable> values, Context context)
+        public void reduce(DoubleGramKey key, Iterable<IntWritable> values, Context context)
                 throws IOException, InterruptedException {
             int sum = 0;
             for (IntWritable value : values) {
@@ -140,7 +184,6 @@ public class StepOne {
             context.write(key, new IntWritable(sum));
         }
     }
-
 
 
     public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException {
@@ -154,21 +197,25 @@ public class StepOne {
         job.setMapOutputValueClass(IntWritable.class);
         job.setReducerClass(MyReducer.class);
 //        job.setCombinerClass(CombinerClass.class);
-//        job.setNumReduceTasks(1);
+//        job.setNumReduceTasks(4);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
         job.setPartitionerClass(StepOne.MyPartitioner.class);
         //TODO change the input format
-//        job.setInputFormatClass(SequenceFileInputFormat.class);
-        job.setInputFormatClass(TextInputFormat.class);
-        /*
-        SequenceFileInputFormat.addInputPath(job, new Path(args[0]));
-        SequenceFileInputFormat.addInputPath(job, new Path(args[1]));*/
-        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/googlebooks-eng-all-1gram-20120701-z"));
-        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/googlebooks-eng-all-2gram-20120701-zy"));
-//        FileInputFormat.setInputPaths(job, new Path(args[0]));
-//        String output = args[1];
-        String output = "output";
+        //for aws run with a gram
+//        job.setInputFormatClass(TextInputFormat.class);
+//        SequenceFileInputFormat.addInputPath(job, new Path(args[0]));
+//        SequenceFileInputFormat.addInputPath(job, new Path(args[1]));
+//        //for pc run
+//        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/googlebooks-eng-all-1gram-20120701-z"));
+//        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/googlebooks-eng-all-2gram-20120701-zy"));
+        // for complete aws ngmram run
+        job.setInputFormatClass(SequenceFileInputFormat.class);
+        FileInputFormat.setInputPaths(job, new Path(args[0]));
+        FileInputFormat.setInputPaths(job, new Path(args[1]));
+        //TODO cahne the output for args[2] in aws run
+//        String output = "output";
+        String output = args[2];
         job.setOutputFormatClass(TextOutputFormat.class);
         FileOutputFormat.setOutputPath(job, new Path(output));
         job.waitForCompletion(true);

@@ -126,12 +126,14 @@ public class StepTwo {
 
 //        job.setInputFormatClass(SequenceFileInputFormat.class);
         job.setInputFormatClass(KeyValueTextInputFormat.class);
+        //TODO in aws run decomment
+//        FileInputFormat.addInputPath(job, new Path(args[0]));
         FileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/output/part-r-00000"));
 
 //        SequenceFileInputFormat.addInputPath(job, new Path(""));
 //        job.setInputFormatClass(TextInputFormat.class);
 //        FileInputFormat.setInputPaths(job, new Path(args[0]));
-
+        //TODO in aws run decomment
 //        String output = args[1];
         String output = "output_step2";
         job.setOutputFormatClass(TextOutputFormat.class);

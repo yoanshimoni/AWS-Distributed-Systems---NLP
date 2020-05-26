@@ -81,9 +81,11 @@ public class StepThree {
 
         // set input
         job.setInputFormatClass(TextDoubleInputFormat.class);
-        FileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/output_step2/part-r-00000"));
+//        FileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/output_step2/part-r-00000"));
+        FileInputFormat.addInputPath(job, new Path(args[0]));
 
-        String output = "output_step3";
+//        String output = "output_step3";
+        String output = args[1];
 
         job.setOutputFormatClass(TextOutputFormat.class);
         FileOutputFormat.setOutputPath(job, new Path(output));
