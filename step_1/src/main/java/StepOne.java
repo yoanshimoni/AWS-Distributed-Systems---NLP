@@ -7,7 +7,6 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -88,12 +87,15 @@ public class StepOne {
         private static final char LAST_LOWER_ENG_CHAR = 'z';
         private static final char FIRST_UPPER_ENG_CHAR = 'A';
         private static final char LAST_UPPER_ENG_CHAR = 'Z';
+        private static final char FIRST_HEB_CHAR = (char) 1488;
+        private static final char LAST_HEB_CHAR = (char) 1514;
 
         private static boolean isLetterOrSpace(char c) {
 
-            return ((c >= FIRST_LOWER_ENG_CHAR && c <= LAST_LOWER_ENG_CHAR) ||
+            /*return ((c >= FIRST_LOWER_ENG_CHAR && c <= LAST_LOWER_ENG_CHAR) ||
                     (c >= FIRST_UPPER_ENG_CHAR && c <= LAST_UPPER_ENG_CHAR) ||
-                    c == ' ');
+                    c == ' ');*/
+            return ((c >= FIRST_HEB_CHAR && c <= LAST_HEB_CHAR) || c == ' ');
 
         }
 
@@ -118,9 +120,9 @@ public class StepOne {
                     return;
                 }
                 // filter only ngrams that contain non-alphabetic characters
-                if (!onlyLettersAndSpace(word)) {
+               /* if (!onlyLettersAndSpace(word)) {
                     return;
-                }
+                }*/
             }
             if (words.length == 1) {
                 context.write(new DoubleGramKey(new Text(words[0]), new Text("*"), decade), occurrences);
@@ -172,7 +174,8 @@ public class StepOne {
         }
     }
 
-    public class CombinerClass extends Reducer<DoubleGramKey, IntWritable, DoubleGramKey, IntWritable> {
+    private static class MyCombiner extends Reducer<DoubleGramKey, IntWritable, DoubleGramKey, IntWritable> {
+
 
         @Override
         public void reduce(DoubleGramKey key, Iterable<IntWritable> values, Context context)
@@ -182,6 +185,7 @@ public class StepOne {
                 sum += value.get();
             }
             context.write(key, new IntWritable(sum));
+
         }
     }
 
@@ -196,8 +200,8 @@ public class StepOne {
         job.setMapOutputKeyClass(DoubleGramKey.class);
         job.setMapOutputValueClass(IntWritable.class);
         job.setReducerClass(MyReducer.class);
-//        job.setCombinerClass(CombinerClass.class);
-//        job.setNumReduceTasks(4);
+        job.setCombinerClass(MyCombiner.class);
+        job.setNumReduceTasks(1);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
         job.setPartitionerClass(StepOne.MyPartitioner.class);
@@ -207,15 +211,16 @@ public class StepOne {
 //        SequenceFileInputFormat.addInputPath(job, new Path(args[0]));
 //        SequenceFileInputFormat.addInputPath(job, new Path(args[1]));
 //        //for pc run
-//        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/googlebooks-eng-all-1gram-20120701-z"));
-//        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/googlebooks-eng-all-2gram-20120701-zy"));
+        job.setInputFormatClass(TextInputFormat.class);
+        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/googlebooks-eng-all-1gram-20120701-z"));
+        SequenceFileInputFormat.addInputPath(job, new Path("/home/maor/Desktop/DSP202/ass2_202/googlebooks-eng-all-2gram-20120701-zy"));
+        String output = "output";
         // for complete aws ngmram run
-        job.setInputFormatClass(SequenceFileInputFormat.class);
-        FileInputFormat.setInputPaths(job, new Path(args[0]));
-        FileInputFormat.setInputPaths(job, new Path(args[1]));
-        //TODO cahne the output for args[2] in aws run
-//        String output = "output";
-        String output = args[2];
+//        job.setInputFormatClass(SequenceFileInputFormat.class);
+//        FileInputFormat.setInputPaths(job, new Path(args[0]));
+//        FileInputFormat.setInputPaths(job, new Path(args[1]));
+//        String output = args[2];
+        //TODO change the output for args[2] in aws run
         job.setOutputFormatClass(TextOutputFormat.class);
         FileOutputFormat.setOutputPath(job, new Path(output));
         job.waitForCompletion(true);

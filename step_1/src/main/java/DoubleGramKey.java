@@ -8,7 +8,7 @@ import java.io.IOException;
 
 
 public class DoubleGramKey implements WritableComparable<DoubleGramKey>{
-	
+
 	private Text word1;
 	private Text word2;
 	private IntWritable	decade;
@@ -16,7 +16,7 @@ public class DoubleGramKey implements WritableComparable<DoubleGramKey>{
 	public DoubleGramKey(Text word1, Text word2, IntWritable decade) {
 		this.word1 = word1;
 		this.word2 = word2;
-        this.decade = decade;
+		this.decade = decade;
 	}
 
 	public DoubleGramKey(IntWritable decade) {
@@ -24,13 +24,13 @@ public class DoubleGramKey implements WritableComparable<DoubleGramKey>{
 	}
 
 	public DoubleGramKey() {
-        this(new Text("*"),new Text("*"), new IntWritable(-1));
+		this(new Text("*"),new Text("*"), new IntWritable(-1));
 	}
 
 	public void readFields(DataInput in) throws IOException {
 		word1.readFields(in);
 		word2.readFields(in);
-        decade.readFields(in);
+		decade.readFields(in);
 	}
 
 	public void write(DataOutput out) throws IOException {
@@ -38,6 +38,8 @@ public class DoubleGramKey implements WritableComparable<DoubleGramKey>{
 		word2.write(out);
 		decade.write(out);
 	}
+
+
 
 	public int compareTo(DoubleGramKey other) {
 		// if this.decade == other.decade, put <decade * *> first
@@ -61,7 +63,7 @@ public class DoubleGramKey implements WritableComparable<DoubleGramKey>{
 		}
 		return ret;
 	}
-	
+
 
 	public IntWritable getDecade() {
 		return this.decade;
@@ -70,12 +72,12 @@ public class DoubleGramKey implements WritableComparable<DoubleGramKey>{
 	public Text getWord1() {
 		return this.word1;
 	}
-	
+
 	public Text getWord2() {
 		return this.word2;
 	}
-	
-	
+
+
 	@Override
 	public String toString() {
 		return this.decade + " " + this.word1 + " " + this.word2;

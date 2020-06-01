@@ -8,7 +8,7 @@ import java.io.IOException;
 
 public class UploadJar {
     public static void main(String[] args) throws IOException {
-        uploadJar("step_3.jar", "/home/maor/Desktop/DSP202/ass2_202/out/artifacts/step_3V2_jar/step_3V2.jar");
+        uploadJar("step_1.jar", "/home/maor/Desktop/DSP202/ass2_202/out/artifacts/step_1_jar/step_1.jar");
 
     }
 

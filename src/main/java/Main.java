@@ -15,14 +15,16 @@ public class Main {
             JAR_step1 = "s3://maorrockyjars/step_1.jar",
             JAR_step2 = "s3://maorrockyjars/step_2.jar",
             JAR_step3 = "s3://maorrockyjars/step_3.jar",
-            OUTPUT = "s3://maorrockyjars/output_ngram_abc_only/",
-            LOGS = "s3://maorrockyjars/logs_ngram_abc_only/",
+            OUTPUT = "s3://maorrockyjars/output_z_zy_combiner/",
+            LOGS = "s3://maorrockyjars/logs_z_zy_combiner/",
             REGION = "us-east-1",
             KEY_NAME = "maor_dsp202",
 //            DATA_1GRAM = "s3://datasets.elasticmapreduce/ngrams/books/20090715/eng-us-all/1gram/data",
             DATA_1GRAM = "s3://maorrockyjars/googlebooks-eng-all-1gram-20120701-z",
+//            DATA_1GRAM_HEB = "s3://datasets.elasticmapreduce/ngrams/books/20090715/heb-all/1gram/data",
 //            DATA_2GRAM = "s3://datasets.elasticmapreduce/ngrams/books/20090715/eng-us-all/2gram/data",
             DATA_2GRAM = "s3://maorrockyjars/googlebooks-eng-all-2gram-20120701-zy",
+//            DATA_2GRAM_HEB = "s3://datasets.elasticmapreduce/ngrams/books/20090715/heb-all/2gram/data",
             TERMINATE = "TERMINATE_JOB_FLOW";
 
 
@@ -88,7 +90,7 @@ public class Main {
         System.out.println("create instances");
 
         RunJobFlowRequest runFlowRequest = new RunJobFlowRequest()
-                .withName("Assignment2")
+                .withName("Assignment2_Combiner")
                 .withInstances(instances)
                 .withSteps(stepOne,stepTwo,stepThree)
 //                .withSteps(stepThree)
